@@ -97,7 +97,7 @@ class OAuthLoginHandler(OAuth2Mixin, BaseHandler):
         return self._state
 
     def get(self):
-        redirect_uri = self.authenticator.get_callback_url(self)
+        redirect_uri = self.authenticator.get_redirect_uri(self)
         extra_params = self.authenticator.extra_authorize_params.copy()
         self.log.info('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
@@ -408,6 +408,23 @@ class OAuthenticator(Authenticator):
         """
         if self.oauth_callback_url:
             return self.oauth_callback_url
+        elif handler:
+            return guess_callback_uri(
+                handler.request.protocol,
+                handler.request.host,
+                handler.hub.server.base_url,
+            )
+        else:
+            raise ValueError(
+                "Specify callback oauth_callback_url or give me a handler to guess with"
+            )
+    def get_redirect_uri(self, handler=None):
+        """Get my OAuth redirect URL
+
+        Either from config or guess based on the current request.
+        """
+        if self.oauth_redirect_uri:
+            return self.redirect_uri
         elif handler:
             return guess_callback_uri(
                 handler.request.protocol,
